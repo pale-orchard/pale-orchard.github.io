@@ -1,0 +1,33 @@
+name: deploy
+on: workflow_dispatch
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Fetch
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          SITE_TOKEN: ${{ secrets.SITE_TOKEN }}
+        run: |
+          curl -fsS --max-redirs 0 -H "Authorization: Bearer $SITE_TOKEN" -o site.tgz "$SITE_URL" 2>/dev/null \
+            || { echo "download failed"; exit 1; }
+          mkdir site
+          tar -xzf site.tgz -C site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+          retention-days: 1
+      - id: deployment
+        uses: actions/deploy-pages@v4
